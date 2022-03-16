@@ -1,0 +1,653 @@
+---
+title: "LineageInference"
+output: html_notebook
+---
+
+Seurat running and integration
+```{r}
+library(Seurat)
+library(Matrix)
+load("/data/proj/GCB_DvB/humanPublication/pubsplicedfull.Rdata")
+load("/data/proj/GCB_DvB/humanPublication/pubunsplicedfull.Rdata")
+load("/data/proj/GCB_DvB/humanPublication/networkAnnoFull.Rdata")
+metadata <- networkAnnotableFile
+```
+Load original clustering
+```{r}
+load("/data/proj/GCB_DvB/humanPublication/clusteringmanuscipt.Rdata")
+annotationpaper <- networkAnnotableFile
+annotationpaper$OriginalClustering <- networkAnnotableFile$seurat_clusters
+library(viridis)
+library(hues)
+sidecols <- iwanthue(length(unique(annotationpaper$OriginalClustering)), 0, 360, 36, 180, 13, 73)
+sidecols <- sidecols[as.factor(annotationpaper$OriginalClustering)]
+annotationpaper$col <- sidecols
+#color matching
+colorscheme <- annotationpaper$col
+for(i in 1:length(levels(annotationpaper$OriginalClustering))){
+  #print(i)
+  clsel <- levels(annotationpaper$seurat_clusters)[i]
+  colordist <- as.data.frame(table(annotationpaper$col[annotationpaper$seurat_clusters %in% clsel]))
+  coloruse <- colordist$Freq
+  names(coloruse) <- colordist$Var1
+  coloruse <- names(sort(coloruse,decreasing = TRUE))[1]
+  colorscheme[which(annotationpaper$seurat_clusters %in% clsel)] <- coloruse
+}
+annotationpaper$col.translated <- colorscheme
+library(plyr)
+Level1  <- revalue(as.factor(annotationpaper$OriginalClustering), c(
+  "26"="OPC",
+  "15"="Glioblast",
+  "7"="Glioblast",
+  "8"="Glioblast",
+  "25"="Glioblast",
+  "27"="VLMC",
+  "23"="NeuralProgenitor",
+  "14"="NeuralProgenitor",
+  "6"="NeuralProgenitor",
+  "3"="NeuralProgenitor",
+  "13"="NeuralProgenitor",
+  "17"="NeuralProgenitor",
+  "11"="RadialGlia",
+  "1"="RadialGlia",
+  "4"="RadialGlia",
+  "21"="RadialGlia",
+  "20"="RadialGlia",
+  "18"="RadialGlia",
+  "24"="RadialGlia",
+  "12"="EarlyInhibitory",
+  "5"="EarlyInhibitory",
+  "22"="EarlyInhibitory",
+  "19"="EarlyInhibitory",
+  "2"="EarlyInhibitory",
+  "10"="EarlyInhibitory",
+  "28"="EarlyInhibitory",
+  "9"="EarlyExcitatory",
+  "16"="EarlyExcitatory",
+  "0"="EarlyExcitatory",
+  "29"="Unknown",
+  "30"="Unknown",
+  "31"="Unknown"
+  ))
+Level1 <- factor(Level1, levels= c(
+  "OPC",
+  "Glioblast",
+  "RadialGlia",
+  "NeuralProgenitor",
+  "EarlyInhibitory",
+  "EarlyExcitatory",
+  "VLMC",
+  "Unknown"))
+levels(Level1)
+c("OPC","Glioblast","RadialGlia","NeuralProgenitor","EarlyInhibitory","EarlyExcitatory","VLMC","29","30","31")     
+Level1colpal <- c("#E8C688","#D3AC9C","#B9CB6C","#738BC6","#D0D1BD","#DA8B6C","#E0C196","#C9B9A4","#C9B9A4","#C9B9A4") 
+Level1col <- Level1colpal[as.factor(Level1)]
+
+annotationpaper$Age <- annotationpaper$Sample
+library(plyr)
+annotationpaper$Age  <- revalue(as.factor(annotationpaper$Age), c(
+  "hF_WK10_2017"="PCW 10",
+  "hF_WK10psaNCAM_2017"="PCW 10",
+  "hF_WK8_2017"="PCW 8",
+  "hF_WK8.5cer.ctx_2019"="PCW 8.5",
+  "hF_WK8.5fb_2019"="PCW 8.5",
+  "hF_WK9_2019"="PCW 9"))
+annotationpaper$Age <- factor(annotationpaper$Age, levels= c(
+  "PCW 8",
+  "PCW 8.5",
+  "PCW 9",
+  "PCW 10"))
+#merge psaNCAM with non-psaNCAM
+annotationpaper$Samples  <- revalue(as.factor(annotationpaper$Sample), c(
+   "hF_WK10_2017"="hF_WK10V2",
+  "hF_WK10psaNCAM_2017"="hF_WK10V2",
+  "hF_WK8_2017"="hF_WK8V2",
+  "hF_WK8.5cer.ctx_2019"="hF_WK8.5cer.ctxV3",
+  "hF_WK8.5fb_2019"="hF_WK8.5fbV3",
+  "hF_WK9_2019"="hF_WK9V3"))
+
+annotationpaper$Level1 <- Level1
+annotationpaper$Level1col <- Level1col
+colorscheme <- annotationpaper$Level1col
+for(i in 1:length(levels(annotationpaper$Level1))){
+  #print(i)
+  clsel <- levels(annotationpaper$seurat_clusters)[i]
+  colordist <- as.data.frame(table(annotationpaper$Level1col[annotationpaper$seurat_clusters %in% clsel]))
+  coloruse <- colordist$Freq
+  names(coloruse) <- colordist$Var1
+  coloruse <- names(sort(coloruse,decreasing = TRUE))[1]
+  colorscheme[which(annotationpaper$seurat_clusters %in% clsel)] <- coloruse
+}
+annotationpaper$Level1col.translated <- colorscheme
+colorscheme <- annotationpaper$Level1
+for(i in 1:length(levels(annotationpaper$seurat_clusters))){
+  #print(i)
+  clsel <- levels(annotationpaper$seurat_clusters)[i]
+  colordist <- as.data.frame(table(annotationpaper$Level1[annotationpaper$seurat_clusters %in% clsel]))
+  coloruse <- colordist$Freq
+  names(coloruse) <- colordist$Var1
+  coloruse <- names(sort(coloruse,decreasing = TRUE))[1]
+  colorscheme[which(annotationpaper$seurat_clusters %in% clsel)] <- coloruse
+}
+annotationpaper$Level1.translated <- colorscheme
+
+```
+Integrate the version 2 and version 3 data using Seurat CCA
+```{r}
+library(Matrix)
+# A list of cell cycle markers, from Tirosh et al, 2015, is loaded with Seurat.  We can
+# segregate this list into markers of G2/M phase and markers of S phase
+s.genes <- cc.genes$s.genes
+g2m.genes <- cc.genes$g2m.genes
+# Create our Seurat object and complete the initalization steps
+hF <- CreateSeuratObject(counts = emats, project = "hFetal", meta.data = metadata)
+#split the dataset into a list of two seurat objects
+hF.list <- SplitObject(hF, split.by = "version")
+hF.list <- lapply(X = hF.list, FUN = function(x) {
+    x <- subset(x, subset = nFeature_RNA > 10)
+    x <- NormalizeData(x)
+    x <- FindVariableFeatures(x, selection.method = "vst", nfeatures = 10000)
+})
+#select features that are repeatedly variable across datasets for integration
+features <- SelectIntegrationFeatures(object.list = hF.list,nfeatures = 10000)
+hF.anchors <- FindIntegrationAnchors(object.list = hF.list, anchor.features = features,reduction = "cca",dims = 1:30)
+#this command creates an 'integrated' data assay
+hF <- IntegrateData(anchorset = hF.anchors)
+DefaultAssay(hF) <- "integrated"
+hF@meta.data$seurat_clusters2 <- hF@meta.data$seurat_clusters
+#hF <- NormalizeData(hF)
+hF <- FindVariableFeatures(hF, selection.method = "vst",nfeatures = 10000)
+hF <- ScaleData(hF, features = VariableFeatures(hF))
+hF <- RunPCA(hF, features = VariableFeatures(hF), ndims.print = 1:5, nfeatures.print = 3)
+# view cell cycle scores and phase assignments
+# Visualize the distribution of cell cycle markers across
+hF <- RunUMAP(hF, dims=1:50,n.neighbors = 200,n.components = 2)
+hF <- CellCycleScoring(hF, s.features = s.genes, g2m.features = g2m.genes, set.ident = TRUE)
+# hF@meta.data$seurat_clusters2 <- metadata$seurat_clusters
+hF <- FindNeighbors(hF, dims = 1:50,k.param = 10)
+hF <- FindClusters(hF, resolution = 1)
+RidgePlot(hF, features = c("PCNA", "TOP2A", "MCM6", "MKI67"), ncol = 2)
+DimPlot(hF,label = TRUE,group.by = "Phase",split.by = "Sample",ncol=2)
+DimPlot(hF,label = TRUE,group.by = "Sample",split.by = "version",ncol=2)
+DimPlot(hF,label = TRUE,group.by = "version",shuffle = T)
+DimPlot(hF,label = TRUE,group.by = "Sample",shuffle = T)
+DimPlot(hF,label = TRUE,group.by = "seurat_clusters2")
+DimPlot(hF,label = TRUE,group.by = "seurat_clusters")
+```
+Write csv to load in python and run scvelo for transition matrix
+```{r}
+write.table(hF@assays$integrated@data,file = "/data/proj/GCB_DvB/humanPublication/pubsplicedcorrectedDM.csv",sep=",")
+write.table(hF@meta.data,file = "/data/proj/GCB_DvB/humanPublication/pubannoDM.csv",sep=",")
+#These are not needed
+write.table(hF@reductions$umap@cell.embeddings,file = "/data/proj/GCB_DvB/humanPublication/umapscVeloDM.csv",sep=",")
+ematu <- ematu[,colnames(emats)]
+# row.names(emats) <- row.names(hF)
+# row.names(ematu) <- row.names(hF)
+write.table(emats[row.names(hF@assays$integrated@data),colnames(hF)],file = "/data/proj/GCB_DvB/humanPublication/pubsplicedFtruncDM.csv",sep=",")
+write.table(ematu[row.names(hF@assays$integrated@data),colnames(hF)],file = "/data/proj/GCB_DvB/humanPublication/pubunsplicedFtruncDM.csv",sep=",")
+#load("/data/proj/GCB_DvB/humanPublication/Final/NBpart1.RData")
+```
+After running scVELO in python we load the results back in.
+```{r}
+library(Matrix)
+library(Seurat)
+#load("/data/proj/GCB_DvB/humanPublication/Step1vanBruggen5nnCCAFINAL2.Rdata")
+load("/data/proj/GCB_DvB/humanPublication/pubsplicedfull.Rdata")
+load("/data/proj/GCB_DvB/humanPublication/pubunsplicedfull.Rdata")
+emats <- emats#[,dup.cells]
+ematu <- ematu#[,dup.cells]
+scVtm <- readMM('/data/proj/GCB_DvB/humanPublication/scVELOtransmatFSCCA30NNveloDM.mtx')
+lt <- read.csv("/data/proj/GCB_DvB/humanPublication/scVELOLT_FSCCA30NNveloDM.csv")
+#Optional read in transcription factor annotations from SCENIC
+TFsSCENIC <- read.table(file="/data/proj/GCB_DvB/human/hFetal/motifs-v9-nr.hgnc-m0.001-o0.0.txt",sep="\t",stringsAsFactors = F)
+TFs <- unique(TFsSCENIC$V6)
+```
+Now we create the diffusion map integrating both velocity and transcriptional distances into one manifold
+```{r}
+set.seed(1234)
+#First we create the diffusion map based on transcription
+tsnerlba <- t(hF@reductions$pca@cell.embeddings[,1:50])
+#get destiny, removed from bioconductor (not very useful >:())
+# install.packages("remotes")
+# remotes::install_github("https://github.com/theislab/destiny",build_vignettes = FALSE, dependencies = TRUE)
+#check for duplicated cells 
+# dup.cells <- !duplicated(t(tsnerlba))
+# table(dup.cells)
+# dup.cells <- as.logical(dup.cells)
+# hF <- hF[,dup.cells]
+# tsnerlba <- tsnerlba[,dup.cells]
+
+library(destiny)
+tsmanifolddist <- DiffusionMap(data =t(tsnerlba) ,n_eigs =20,verbose = TRUE)#,sigma=0.001) 
+colnames(tsmanifolddist@transitions) <- colnames(hF)
+row.names(tsmanifolddist@transitions) <- colnames(hF)
+
+#Now we create the joint representation
+XY <- t(scVtm) %*% tsmanifolddist@transitions
+
+#Now we integrate the spaces
+library(irlba)
+dcompl <- irlba(XY,50,maxit = 100000)
+tsnerlba <- t(dcompl$u)
+tsnerlba <- rbind(tsnerlba,t(dcompl$v))
+library(destiny)
+tsmanifold <- DiffusionMap(data =t(tsnerlba) ,n_eigs =20,verbose = TRUE)#,sigma=0.001) 
+colnames(tsmanifold@transitions) <- colnames(hF)
+row.names(tsmanifold@transitions) <- colnames(hF)
+
+#Now we generate the backward kernel 80% velocity 20% transcriptional distance
+scVtmb <-  scVtm
+scVtmb <- t(t(scVtmb)/Matrix::colSums(scVtmb,na.rm = TRUE))
+scVtmb[is.na(scVtmb)] <- 0
+kernel <- t((scVtm *0.8)) + (tsmanifold@transitions * 0.2)
+kernel <- t(t(kernel)/Matrix::colSums(kernel,na.rm = TRUE))
+kernel[is.na(kernel)] <- 0
+```
+Now we calculate the new clusters based on the new manifold
+```{r}
+# library(Seurat)
+# #library(amap)
+#77
+newclustobj <- Seurat::CreateSeuratObject(counts = as.matrix(hF@assays$RNA@data))
+NetworkDist <- as.dist(1-tsmanifold@transitions)
+newclustobj[["HSphere_snn"]] <- Seurat::FindNeighbors(NetworkDist,k.param=10)$snn
+newclustobj <- Seurat::FindClusters(newclustobj, graph.name = "HSphere_snn",resolution = 1.6) #algorithm = 4,
+table(newclustobj@meta.data$seurat_clusters)
+hF@meta.data$seurat_clusters3 <- newclustobj@meta.data$seurat_clusters
+DimPlot(hF,label = TRUE,group.by = "seurat_clusters3")+ NoLegend()
+Idents(hF) <- 'seurat_clusters3'
+  DimPlot(hF, label=F, cells.highlight=WhichCells(hF, idents = "69"), cols.highlight = c("darkblue", "darkred"), cols= "grey")
+  FeaturePlot(hF,features = c("APOD"),slot="data")
+```
+
+And we calculate the pseudotimes associated to each cluster
+```{r}
+pt <- destiny::DPT(tsmanifold)#,tips = c(1,2))
+cd_diffusionplot <- hF@meta.data
+lineagecluster <- as.factor(hF$seurat_clusters3)
+names(lineagecluster) <- row.names(cd_diffusionplot)
+x<- pt$DPT1
+names(x) <- row.names(cd_diffusionplot)
+branchtips = as.character(NULL)#lowestcell
+branchpseudotimes <- matrix(nrow=(length(levels(as.factor(lineagecluster)))),ncol=nrow(cd_diffusionplot))
+lineagecluster <- lineagecluster[row.names(cd_diffusionplot)]
+for(i in 1:length(levels(droplevels(as.factor(lineagecluster))))){
+  pseudotime <- x[names(lineagecluster[lineagecluster %in% levels(lineagecluster)[i]])]
+  topcell <- names(pseudotime[pseudotime == max(pseudotime)])
+  branchtips <-  c(branchtips,topcell)
+x <-pt[,which(row.names(cd_diffusionplot)==topcell,arr.ind = TRUE)]
+names(x) <- row.names(cd_diffusionplot)
+  branchpseudotimes[i,] <- x
+  #print(i)
+}
+colnames(branchpseudotimes) <- row.names(cd_diffusionplot)
+row.names(branchpseudotimes) <- levels(as.factor(lineagecluster))
+branchpseudotimes <- branchpseudotimes[as.character(sort(as.integer(row.names(branchpseudotimes)),decreasing = F)),]
+
+x <- hF@reductions$umap@cell.embeddings[,1]
+  y <- hF@reductions$umap@cell.embeddings[,2]
+  
+load("/data/proj/GCB_DvB/humanPublication/umapharmony.Rdata")
+  x <- umap_out_harmony2ddist$layout[,1]
+  y <- umap_out_harmony2ddist$layout[,2]
+```
+Now we add tracks of lineage diffusion giving the start states of the diffusion process #this is the one to use
+```{r}
+#library(e1071)
+library(Matrix)
+library(destiny)
+startpt <- lt$latent_time
+names(startpt) <- colnames(branchpseudotimes)
+traceclusters <- matrix(ncol=nrow(branchpseudotimes),nrow=ncol(branchpseudotimes))
+for(i in 1:nrow(branchpseudotimes)){
+  #print(i)
+log<- numeric()
+starttime = "-1"
+if(!starttime == row.names(branchpseudotimes)[i]){
+source <- startpt
+sink <- branchpseudotimes[i,]
+sink <- sort(sink)
+trackcellstart <- names(head(sink,10))
+lineagecells <- trackcellstart
+trackcell <- trackcellstart[1]
+threshold <- source[trackcellstart[1]]
+stall = 1
+while(source[trackcell] > 0 & stall > 0 ) {
+  logold <- log
+  log<- c(log,source[trackcellstart])
+  stall = length(log) - length(logold)
+pool <- names(head(sink[sink > sink[trackcell]],1))
+if(length(pool) < 1) {trackcell <- names(which(source == min(source)))}
+else{
+trackcellstart <- names(which(source[pool] <= min(log)))
+lineagecells <- c(lineagecells,trackcellstart)
+trackcell <- names(which(source[pool] == min(source[pool])))}
+}
+LineageCells <- lineagecells
+Pathtrace <- names(lineagecluster) %in% c(unique(LineageCells))#,unique(LineageCells2))
+}
+else{Pathtrace <- logical(ncol(branchpseudotimes)) }
+traceclusters[,i] <- Pathtrace
+}
+```
+Here we start the diffusion process, first add the function
+```{r}
+WAdiffuse <- function(A,dist,ncells,pool=FALSE,cores,distselectneighbor,nameselectneighbor){
+  library(Matrix)
+  library(foreach)
+  library(doSNOW)
+  library(matrixStats)
+  range01 <- function(x){(x-min(x))/(max(x)-min(x))}
+ cl <- makeCluster(cores)  
+ registerDoSNOW(cl)  
+iterations <- ncol(A)
+pb <- txtProgressBar(max = iterations, style = 3)
+progress <- function(n) setTxtProgressBar(pb, n)
+opts <- list(progress = progress)
+#distselectneighbor <- Matrix(apply(dist,2,function(x) sort(x,decreasing=FALSE)[1:ncells]),sparse = TRUE)
+#nameselectneighbor <- apply(dist,2,function(x) sort(x,decreasing=FALSE,index.return=TRUE)$ix[1:ncells])
+rm(dist)
+gc()
+if(class(A) != "dgCMatrix"){
+A <- Matrix(as.matrix(A),sparse = T)
+}
+gc()
+if(pool==FALSE){
+D <-  foreach(i = 1:ncol(A),.combine=cbind,.packages=c("Matrix"),.options.snow = opts) %dopar% {
+distsub <- 1-distselectneighbor[,i] #uses prob
+C <- A[,nameselectneighbor[,i]]
+C <- apply(C,1,function(x) weighted.mean(x,distsub))
+return(C)
+}
+close(pb)
+ stopCluster(cl)
+}
+if(pool==TRUE){
+D <-  foreach(i = 1:ncol(A),.combine=cbind,.packages=c("Matrix"),.options.snow = opts) %dopar% {
+distsub <- rowSums(A[,nameselectneighbor[,i]])
+return(distsub)
+}
+close(pb)
+ stopCluster(cl)
+}
+colnames(D) <- colnames(A)
+row.names(D) <- row.names(A)
+D <- Matrix(D,sparse=TRUE)
+  gc()
+ return(D)
+}
+```
+Now we run the diffusion for 30 iterations with 100 neighbors, and calculate lineage membership and diffusion score
+
+```{r}
+library(Matrix)
+nameselectneighbor <- apply(kernel,2,function(x) sort(x,decreasing=TRUE,index.return=TRUE)$ix[1:100])
+distselectneighbor <- Matrix(apply(kernel,2,function(x) sort(x,decreasing=TRUE)[1:100]),sparse = TRUE)
+
+linwalk <- list()
+linwalk[[1]] <- WAdiffuse(t(1*traceclusters),kernel,pool = FALSE,ncells=100,cores=8,distselectneighbor,nameselectneighbor)
+for(i in 2:30){
+  print(i)
+linwalk[[i]] <- WAdiffuse(linwalk[[i-1]],kernel,pool = FALSE,ncells=100,cores=8,distselectneighbor,nameselectneighbor)
+}
+
+#save(linwalk,file="/data/proj/GCB_DvB/humanPublication/LinwalkFTRUECCAdiff30NNusingkernel.Rdata")
+#load("/data/proj/GCB_DvB/humanPublication/LinwalkFTRUECCAdiff30NNusingkernel.Rdata")
+
+#get lineages
+for(j in 1:nrow(linwalk[[1]])){
+  fpass <- linwalk[[1]][j,]
+for(i in 2:30){
+fpass <- cbind(fpass,linwalk[[i]][j,])
+}
+values <- apply(fpass,1,max)
+if(j == 1){lineage = values} else{lineage <- rbind(lineage,values)}
+}
+```
+Get lineage KL function
+```{r}
+KLlin <- function(A,B,cores,skipgenes,limitcells,ncells,correct=FALSE,batch){
+  print(correct)
+  library(Matrix)
+  library(foreach)
+  library(doSNOW)
+  range01 <- function(x){(x-min(x))/(max(x)-min(x))}
+ cl <- makeCluster(cores)  
+ registerDoSNOW(cl)  
+iterations <- ncol(A)
+pb <- txtProgressBar(max = iterations, style = 3)
+progress <- function(n) setTxtProgressBar(pb, n)
+opts <- list(progress = progress)
+if(class(A) != "dgCMatrix"){
+A <- Matrix(as.matrix(A),sparse = T)
+ }
+ if(class(B) != "dgCMatrix"){
+B <- Matrix(as.matrix(A),sparse = T)
+ }
+if(min(A) < 0){
+A <- A-min(A)
+}
+if(min(B) < 0){
+B <- B-min(B)
+}
+rm(B)
+gc()
+D <-  foreach(i = 1:ncol(A),.combine=cbind,.packages="Matrix",.options.snow = opts) %dopar% {
+D <- rep(NA, ncol(A))
+if(skipgenes==TRUE){
+avoidgene <- which(! (A[,i]<=0));C <- A[avoidgene,]}else{C <- A}
+Ckl   <- t(t(C)/colSums(C))#[avoidgene,]
+Ckl[is.na(Ckl)] <- 0
+Ckl <- Matrix(Ckl+0.0000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000001,sparse=TRUE)
+Ckl_log <- log(Ckl[,i]/Ckl[,-i])
+C1kl <- Ckl[,i]*Ckl_log
+rm(Ckl_log)
+Ckl <- colSums(C1kl)
+
+nnsort <- sort(Ckl,decreasing = FALSE)
+
+if(limitcells==TRUE){
+G <- t(C1kl[,names(nnsort)[1:ncells]]) / Ckl[names(nnsort)[1:ncells]];G <- (t(G) %*% Ckl[names(nnsort)[1:ncells]])[,1]}else{G <- t(C1kl) / Ckl;G <- (t(G) %*% Ckl)[,1]}
+
+GD <- rep(NA, nrow(A))
+usedG <- which(row.names(A) %in% names(G))
+notusedG <- which(!row.names(A) %in% names(G))
+GD[usedG] <- G
+GD[notusedG] <- 0
+names(GD) <- row.names(A)
+
+C <- GD
+
+gc()
+return(C)
+}
+close(pb)
+ stopCluster(cl)
+ 
+colnames(D) <- colnames(A)
+rownames(D) <- row.names(A)
+Dnorm <- scale(abs(D), center=FALSE, scale=colSums(abs(D)))
+Dnorm.sign <- scale(D, center=FALSE, scale=colSums(abs(D)))
+D <- Matrix(D,sparse=TRUE)
+Dnorm <- Matrix(Dnorm,sparse=TRUE)
+Dnorm.sign <- Matrix(Dnorm.sign,sparse=TRUE)
+D <- list(D,Dnorm,Dnorm.sign)
+names(D) <- c("D","Dnorm","Dnorm.sign")
+  #D <- D/sum(D)
+  gc()
+ return(D)
+}
+```
+Run lineage membership estimation for each cell in the matrix
+```{r}
+lineageKL <- lineage
+lineageKLdone <- KLlin(lineage,lineage,15,skipgenes = FALSE,limitcells = FALSE,ncells = 100,correct = FALSE,batch = colnames(hF))
+#save(lineageKL,file="/data/proj/GCB_DvB/humanPublication/Final/lineagKLfinalrealCCA30NNvelokernel.Rdata")
+#load("/data/proj/GCB_DvB/humanPublication/Final/lineagKLfinalrealCCA30NNvelokernel.Rdata")
+lineage.mem <- lineageKLdone$Dnorm
+lineage.mem.max <- (apply(lineage.mem,2,max))
+
+```
+Visualize lineage information
+```{r}
+library(plotly)
+library(dplyr)
+#Differentiation score
+plot_ly( x = ~x, y = ~y,marker = list(size = 5)) %>% add_markers(color=~lineage.mem.max,alpha=1)
+
+#Plot OL lineage cluster 69 , row 70.
+Expression_capped <- lineage.mem[70,]^0.1
+Expression_capped <- scale(Expression_capped)
+Expression_capped[Expression_capped <= 1.96]  <- 0
+    names(Expression_capped) <- seq_len(length(Expression_capped))
+    Expression_capped <- sort(Expression_capped,decreasing = FALSE)
+    ord <- as.integer(names(Expression_capped))
+    plot_ly( x = ~x[ord], y = ~y[ord],marker = list(size = 5)) %>% add_markers(color=~Expression_capped,alpha=1)%>% layout(
+      xaxis = list( showgrid = FALSE,showaxis=FALSE,zeroline=FALSE),
+      yaxis = list(showgrid = FALSE,showaxis=FALSE,zeroline=FALSE))
+```
+
+```{r fig.height=10, fig.width=10}
+library(Matrix)
+emat.norm <- hF@assays$RNA@data
+#REMEMBER its PLUS1 for the clusters
+lnum <- as.numeric(70)
+Expression_capped <- lineage.mem[lnum,]^0.1
+Expression_capped <- scale(Expression_capped)
+#1.645 10% 1.96 5% 2.58 1%  
+Expression_capped[Expression_capped <= 1.96]  <- 0
+ptlin <- which(Expression_capped > 0)
+length(ptlin)
+
+Lineagegenes <- row.names(hF@assays$integrated@data)
+#Only TFs
+#Lineagegenes <- Lineagegenes[Lineagegenes %in% TFs]
+suppressWarnings(corlin <- apply(as.matrix(emat.norm[Lineagegenes,ptlin]),1,function(x) cor.test(x,lineage.mem[lnum,ptlin]^0.1,method="spearman")))
+linKLdrivers <- as.data.frame(t(as.data.frame(lapply(corlin,unlist))))
+linKLdrivers$p.value <- as.numeric(as.character(linKLdrivers$p.value))
+linKLdrivers$estimate.rho <- as.numeric(as.character(linKLdrivers$estimate.rho))
+#linKLdrivers$p.adjust <- p.adjust(linKLdrivers$p.value,method = "BH")
+ldsig <- linKLdrivers$p.value;ldmaxcor <-linKLdrivers$estimate.rho
+names(ldmaxcor) <- Lineagegenes
+names(ldsig) <- Lineagegenes
+lineagevals <- as.data.frame(cbind(ldsig,ldmaxcor))
+lineagevals <- subset(lineagevals,lineagevals$ldsig < 0.05)
+lvgenes <- lineagevals
+Lineagegenes <- row.names(lineagevals[order(abs(lineagevals$ldmaxcor),decreasing = TRUE),])#[1:500]
+
+
+linclusters <- as.data.frame(table(hF$seurat_clusters3[ptlin])/table(hF$seurat_clusters3))
+linclusters <- as.character(linclusters[linclusters$Freq >0.1,]$Var1)
+corclusters <- hF$seurat_clusters3#[ptlin]
+ for(i in 1:length(linclusters)){
+  if(i==1){cat("Correlating genes...binning by clusters...")}
+  cat(paste("Bin Cluster ",linclusters[i],"..."))
+  if(i!=1){linKLdriverssig <-cbind(linKLdriverssig,linKLdrivers$p.value);linKLdriverscor <-cbind(linKLdriverscor,linKLdrivers$estimate.cor)}
+binlin  <- emat.norm[Lineagegenes,]
+binlin  <- binlin[,corclusters %in% linclusters[i]]
+cat(paste(length(which(corclusters %in% linclusters[i])),"cells..."))
+  linbin <- lineage.mem[lnum,]^0.1
+  linbin <- linbin[corclusters %in% linclusters[i]]
+suppressWarnings(corlin <- apply(as.matrix(binlin),1,function(x) cor.test(x,linbin,method="pearson")))
+linKLdrivers <- as.data.frame(t(as.data.frame(lapply(corlin,unlist))))
+linKLdrivers$p.value <- as.numeric(as.character(linKLdrivers$p.value))
+linKLdrivers$p.value <- p.adjust(linKLdrivers$p.value,method = "BH")
+linKLdrivers$estimate.cor <- as.numeric(as.character(linKLdrivers$estimate.cor))
+if(i!=1){linKLdriverssig <-cbind(linKLdriverssig,linKLdrivers$p.value)}
+if(i==1){linKLdriverssig <- linKLdrivers$p.value;linKLdriverscor <-linKLdrivers$estimate.cor}
+ }
+row.names(linKLdriverscor) <- Lineagegenes
+row.names(linKLdriverssig) <- Lineagegenes
+ldmaxcor <- apply(linKLdriverscor,1,max,na.rm = TRUE)
+ldmaxvar <- apply(linKLdriverscor,1,var,na.rm = TRUE)
+names(ldmaxcor) <- Lineagegenes
+names(ldmaxvar) <- Lineagegenes
+ldsig <- apply(linKLdriverssig,1,min,na.rm = TRUE)
+names(ldsig) <- Lineagegenes
+lineagevals <- as.data.frame(cbind(ldsig,ldmaxcor,ldmaxvar))
+lineagevals <- subset(lineagevals,lineagevals$ldsig < 0.05)
+lvgenes <- lineagevals
+EC <- lineage[lnum,ptlin]
+names(EC) <- seq_len(length(EC))
+EC <- sort(EC,decreasing = FALSE)
+ord <- as.integer(names(EC))
+
+if(nrow(lineagevals) <=100){ptgenes <- row.names(lineagevals)}else{ptgenes <- row.names(lineagevals[order(lineagevals$ldmaxcor,decreasing = TRUE),])[1:100]}
+
+ctlin <- as.matrix(emat.norm[ptgenes,ptlin])
+dat <- data.frame(t(ctlin[,ord]))
+## response
+vars <- colnames(dat)
+## covariate
+id <- 1:nrow(dat)
+library(mgcv)
+dat <- data.frame(t(ctlin[,ord]))
+colnames(dat) <- gsub("-", "", colnames(dat))
+ptgenesnum <- colnames(dat)
+dat <- cbind(id,dat)
+
+new.datp <- matrix(nrow=length(ptgenesnum),ncol=length(id))
+new.datpval <- numeric(length=length(ptgenesnum))
+for(i in 1:length(ptgenesnum)){
+  form <- as.formula(paste0(ptgenesnum[i],"~",paste0("s(","id",',bs="cs",k=10',")",collapse="+")))
+  m <- gam(form, data=dat)
+  form <- as.formula(paste0(ptgenesnum[i],"~",paste0("1",collapse="+")))
+  m0 <- gam(form, data=dat)
+  new.datp[i,] <- m$fitted.values
+}
+row.names(new.datp) <- ptgenes
+colnames(new.datp) <- colnames(ctlin[,ord])
+new.datp[new.datp<0] <- 0
+range01 <- function(x){(x-min(x))/(max(x)-min(x))}
+new.datp <- t(apply(new.datp,1,range01))
+new.dat <- new.datp#[fdr < 0.05,]
+
+GC <- unlist(apply(new.dat,1,function(x) which(x == max(x))[1]))
+names(GC) <- seq_len(length(GC))
+GC <- sort(GC,decreasing = TRUE)
+ordG <- as.integer(names(GC))
+
+ctlin <- as.matrix(ematu[row.names(new.dat),ptlin])
+dat <- data.frame(t(ctlin[,ord]))
+vars <- colnames(dat)
+id <- 1:nrow(dat)
+library(mgcv)
+dat <- data.frame(t(ctlin[,ord]))
+colnames(dat) <- gsub("-", "", colnames(dat))
+ptgenesnum <- colnames(dat)
+dat <- cbind(id,dat)
+new.datu <- matrix(nrow=length(ptgenesnum),ncol=length(id))
+for(i in 1:length(ptgenesnum)){
+  #print(i)
+  form <- as.formula(paste0(ptgenesnum[i],"~",paste0("s(","id",',bs="cs",k=10',")",collapse="+")))
+  new.datu[i,] <- gam(form, data=dat)$fitted.values
+}
+row.names(new.datu) <- row.names(new.dat)
+colnames(new.datu) <- colnames(ctlin[,ord])
+new.datu[new.datu<0] <- 0
+range01 <- function(x){(x-min(x))/(max(x)-min(x))}
+new.datu <- t(apply(new.datu,1,range01))
+new.dat[new.dat<0] <- 0
+new.datu <- new.dat[ordG,]-new.datu[ordG,]
+filter <- apply(new.datu,1,anyNA)
+new.datu <- new.datu[!filter,]
+ordF <- ordG[!filter]
+GC <- unlist(apply(new.datu,1,function(x) which(x == max(x))[1]))
+names(GC) <- seq_len(length(GC))
+GC <- sort(GC,decreasing = TRUE)
+ordF <- as.integer(names(GC))
+
+
+library(heatmap3)
+library(pheatmap)
+library(hues)
+library(viridis)
+sidecols <- iwanthue(length(unique(hF@meta.data$seurat_clusters3)),0, 360, 36, 180, 13, 73)
+sidecols <- sidecols[as.factor(hF@meta.data$seurat_clusters3)][ptlin]
+names(sidecols) <- seq_len(length(sidecols))
+sidecols <- sidecols[ord]
+heatmap3(new.dat[ordG,], Rowv = NA, Colv = NA ,scale = "none",symm = F, method = "ward.D2",col=viridis(1024),balanceColor =F,cexRow = 1.2,cexCol = 0.5,ColSideColors=sidecols,labCol = NA,)
+heatmap3(new.datu[ordF,], Rowv = NA, Colv = NA ,scale = "none",symm = F, method = "ward.D2",balanceColor =F,cexRow = 1.4,cexCol = 0.5,ColSideColors=sidecols,labCol = NA)
+
+save.image("/data/proj/GCB_DvB/humanPublication/Final/NBpart2.RData")
+```
