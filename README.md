@@ -5,3 +5,4 @@ Follow the notebooks for lineage inferrence on a Seurat object. We have provided
 
 Please follow LinInfNB.nb.html and LinInfscVelo.ipynb for the lininf algorithm. All necessary custom functions are found in the notebook.
 
+All neccessary files to reproduce the analysis are referenced in the notebooks and can be temporarily found here https://drive.google.com/file/d/1xxN_wooiRjrCSbNcX7qUP7lkANt0r9hF/view?usp=sharing 
